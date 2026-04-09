@@ -9,14 +9,32 @@ from typing import List, Set, Optional, Tuple, Iterator, IO
 import pathspec
 from git import Repo
 
+BINARY_EXTENSIONS = {
+    # images
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".svg",
+    # audio
+    ".wav", ".mp3", ".flac", ".ogg", ".m4a", ".aac",
+    # video
+    ".mp4", ".avi", ".mov", ".mkv", ".webm",
+    # archives
+    ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar",
+    # documents/binary containers
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+    # fonts
+    ".ttf", ".otf", ".woff", ".woff2",
+    # executables/libraries
+    ".exe", ".dll", ".so", ".dylib", ".bin", ".class",
+    # misc
+    ".db", ".sqlite", ".sqlite3", ".pyc", ".pyo",
+}
 # Constants for filtering
 SYSTEM_DIRS = {
     ".git", "node_modules", "venv", "env", "__pycache__", 
     ".pytest_cache", "dist", "build", ".idea", ".vscode"
 }
 LOCK_FILES = {
-    "package-lock.json", "yarn.lock", "pnpm-lock.yaml", 
-    "poetry.lock", "Gemfile.lock"
+    "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+    "poetry.lock", "Gemfile.lock", "uv.lock"
 }
 
 def generate_tree(dir_path: Path, filtered_files: Set[Path], current_dir: Optional[Path] = None, prefix: str = "") -> str:
@@ -65,6 +83,7 @@ def get_word_count(text: str) -> int:
     """Counts words in a string."""
     return len(text.split())
 
+
 class DocWriter:
     def __init__(self, base_output: str, repo_name: str, split_words: int, total_files: int):
         self.base_output = base_output
@@ -75,7 +94,16 @@ class DocWriter:
         self.current_word_count = 0
         self.file_handle: Optional[IO] = None
         self.part_word_counts: List[int] = []
-        
+        self.pending_split = False
+
+    def start_file(self):
+        """Opens a new part before writing the next file if previous file overflowed the limit."""
+        if self.pending_split and self.file_handle:
+            self.close_current_part()
+            self.current_part += 1
+            self.write_header()
+            self.pending_split = False
+
     def _get_filename(self) -> str:
         name, ext = os.path.splitext(self.base_output)
         return f"{name}_part{self.current_part}{ext}"
@@ -105,16 +133,15 @@ class DocWriter:
 
     def write_content(self, content: str):
         words = get_word_count(content)
-        
-        # If writing this content exceeds the limit, and we've already written something substantial
-        if self.current_word_count + words > self.split_words and self.current_word_count > 0:
-            self.close_current_part()
-            self.current_part += 1
-            self.write_header()
-            
+
         if self.file_handle:
             self.file_handle.write(content)
             self.current_word_count += words
+
+            # Не режем текущий файл посередине.
+            # Просто помечаем, что следующий файл надо начать с нового part.
+            if self.current_word_count > self.split_words:
+                self.pending_split = True
 
     def close_current_part(self):
         if self.file_handle:
@@ -204,6 +231,10 @@ def main():
                 # Check Lock files
                 if f in LOCK_FILES:
                     continue
+
+                # Check binary-like extensions
+                if full_path.suffix.lower() in BINARY_EXTENSIONS:
+                    continue
                 
                 # Check extensions
                 if allowed_exts and full_path.suffix not in allowed_exts:
@@ -223,6 +254,7 @@ def main():
         processed_count = 0
         
         for file_path in filtered_files:
+            writer.start_file()
             rel_path = file_path.relative_to(work_dir)
             
             file_header = (
@@ -234,6 +266,7 @@ def main():
             # Max size check
             size_kb = file_path.stat().st_size / 1024
             if size_kb > args.max_size:
+                print(f"SKIP [max-size]: {rel_path} ({size_kb:.1f} KB > {args.max_size} KB)")
                 content = file_header + f"```\n[СОДЕРЖИМОЕ ПРОПУЩЕНО: Размер файла превышает лимит --max-size]\n```\n\n"
                 writer.write_content(content)
                 total_words += get_word_count(content)
@@ -258,6 +291,7 @@ def main():
                 processed_count += 1
                 
             except (UnicodeDecodeError, PermissionError):
+                print(f"SKIP [read-error]: {rel_path} ({type(e).__name__}: {e})")
                 content = file_header + f"```\n[СОДЕРЖИМОЕ ПРОПУЩЕНО: Бинарный файл или неверная кодировка]\n```\n\n"
                 writer.write_content(content)
                 total_words += get_word_count(content)
