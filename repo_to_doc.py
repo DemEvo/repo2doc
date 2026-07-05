@@ -11,7 +11,7 @@ from git import Repo
 
 BINARY_EXTENSIONS = {
     # images
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".svg",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".icns", ".svg",
     # audio
     ".wav", ".mp3", ".flac", ".ogg", ".m4a", ".aac",
     # video
@@ -84,6 +84,11 @@ def get_word_count(text: str) -> int:
     return len(text.split())
 
 
+def get_part_filename(base_output: str, part_number: int) -> str:
+    name, ext = os.path.splitext(base_output)
+    return f"{name}_part{part_number:02d}{ext}"
+
+
 class DocWriter:
     def __init__(self, base_output: str, repo_name: str, split_words: int, total_files: int):
         self.base_output = base_output
@@ -105,8 +110,7 @@ class DocWriter:
             self.pending_split = False
 
     def _get_filename(self) -> str:
-        name, ext = os.path.splitext(self.base_output)
-        return f"{name}_part{self.current_part}{ext}"
+        return get_part_filename(self.base_output, self.current_part)
 
     def write_header(self, tree_str: str = ""):
         filename = self._get_filename()
@@ -152,7 +156,7 @@ class DocWriter:
     def finalize(self, total_words: int):
         self.close_current_part()
         # Update placeholder in part 1
-        part1_file = f"{os.path.splitext(self.base_output)[0]}_part1{os.path.splitext(self.base_output)[1]}"
+        part1_file = get_part_filename(self.base_output, 1)
         if os.path.exists(part1_file):
             with open(part1_file, "r", encoding="utf-8") as f:
                 content = f.read()
@@ -306,8 +310,7 @@ def main():
         print(f"🧮 Общее количество слов: {total_words}")
         print(f"\n📄 Документация разбита на {writer.current_part} файл(а):")
         for i, count in enumerate(writer.part_word_counts, 1):
-            name, ext = os.path.splitext(args.output)
-            print(f"- {name}_part{i}{ext} ({count} слов)")
+            print(f"- {get_part_filename(args.output, i)} ({count} слов)")
 
     finally:
         if temp_dir_obj:

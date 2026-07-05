@@ -25,12 +25,12 @@ pip install -r requirements.txt
 
 #### Конвертация локальной папки:
 ```bash
-python repo_to_doc.py --path ./my-project --output documentation.txt
+python repo_to_doc.py --path ./my-project --output documentation.md
 ```
 
 #### Конвертация по URL:
 ```bash
-python repo_to_doc.py --url https://github.com/user/repo --output repo_doc.txt
+python repo_to_doc.py --url https://github.com/user/repo --output repo_doc.md
 ```
 
 #### Тонкая настройка:
@@ -38,24 +38,24 @@ python repo_to_doc.py --url https://github.com/user/repo --output repo_doc.txt
 python repo_to_doc.py --path ./src \
     --extensions .py,.js \
     --max-size 200 \
-    --split-words 500000 \
-    --output result.txt
+    --split-words 128000 \
+    --output result.md
 ```
 
 ## 🛠 Аргументы CLI
 
-| Флаг | Описание | По умолчанию |
-|------|----------|--------------|
-| `--url` | URL GitHub репозитория для клонирования | - |
-| `--path` | Путь к локальной директории | - |
-| `--output` | Имя выходного файла | `repo_doc.txt` |
-| `--extensions` | Список расширений через запятую (напр. `.py,.ts`) | Все |
-| `--max-size` | Макс. размер файла в КБ | `200` |
-| `--split-words`| Макс. количество слов в одном выходном файле | `500000` |
+| Флаг | Описание | По умолчанию  |
+|------|----------|---------------|
+| `--url` | URL GitHub репозитория для клонирования | -             |
+| `--path` | Путь к локальной директории | -             |
+| `--output` | Имя выходного файла | `repo_doc.md` |
+| `--extensions` | Список расширений через запятую (напр. `.py,.ts`) | Все           |
+| `--max-size` | Макс. размер файла в КБ | `200`         |
+| `--split-words`| Макс. количество слов в одном выходном файле | `500000`      |
 
 ## 📁 Структура вывода
 
-Утилита создает файлы вида `name_part1.txt`, `name_part2.txt` и так далее. Первая часть всегда содержит сводку и дерево проекта. Последующие части содержат "умный заголовок" для сохранения контекста.
+Утилита создает файлы вида `name_part1.md`, `name_part2.md` и так далее. Первая часть всегда содержит сводку и дерево проекта. Последующие части содержат "умный заголовок" для сохранения контекста.
 
 ---
 Разработано в рамках технического задания RepoToDoc.
@@ -68,12 +68,12 @@ python repo_to_doc.py --path ./src \
 **Вариант 1: Отфильтровать по расширению**
 С помощью флага `--extensions` скажите скрипту собирать только Markdown-статьи. Это мгновенно отсечет весь React/TypeScript код и JSON-дампы:
 ```bash
-python repo_to_doc.py --url https://github.com/DemEvo/supabase-docs --extensions .md,.mdx --output supabase_clean_docs.txt
+python repo_to_doc.py --url https://github.com/DemEvo/supabase-docs --extensions .md,.mdx --output supabase_clean_docs.md
 ```
 
 **Вариант 2: Сузить область поиска**
 Если репозиторий скачан локально, укажите путь не к корню проекта, а конкретно к папке `content`, где лежат сами тексты:
 ```bash
-python repo_to_doc.py --path ./supabase-docs/content --output supabase_clean_docs.txt
+python repo_to_doc.py --path ./supabase-docs/content --output supabase_clean_docs.md
 ```
 
